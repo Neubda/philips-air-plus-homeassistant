@@ -15,7 +15,6 @@ import hmac
 import io
 import json
 import re
-import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -93,7 +92,7 @@ def inspect_apk(path: Path) -> dict:
         # Only report path-shaped candidates; generic words like "total"
         # must not be mistaken for OTA endpoints. These are not called.
         if re.search(r"firmware|upgrade|(?<![a-z])ota(?![a-z])", value, re.I):
-            for match in re.findall(r"(?:https?://[^\s\"'<>]+|/?(?:enduser/)?[A-Za-z0-9_./-]+/)", value):
+            for match in re.findall(r"(?:https?://[^\s\"'<>]+|enduser/[A-Za-z0-9_./-]+/)", value):
                 if re.search(r"firmware|upgrade|(?:^|/)ota(?:/|$)", match, re.I):
                     candidate = match.split("?", 1)[0]
                     if len(candidate) < 300 and not SECRET_PATTERN.search(candidate.encode()):
@@ -185,7 +184,18 @@ def login(email: str, code_reader=getpass.getpass) -> str:
 
 
 def discover(uid: str, secret: str, *, mqtt_info=False) -> dict:
-    timestamp = str(int(time.time()))
+    reply = request_json(AIR_HOST + "device/serverTime/")
+    validate_reply(reply, "server_time")
+    server_data = reply.get("data")
+    if isinstance(server_data, str):
+        try:
+            server_data = json.loads(server_data)
+        except ValueError:
+            raise ProbeError("server_time: invalid data") from None
+    timestamp = server_data.get("timestamp2") if isinstance(server_data, dict) else None
+    if not isinstance(timestamp, (str, int)) or not re.fullmatch(r"[0-9]{1,20}", str(timestamp)):
+        raise ProbeError("server_time: timestamp missing or invalid")
+    timestamp = str(timestamp)
     username = "PHILIPS:" + uid
     reply = request_json(
         AIR_HOST + "enduser/v2/getToken/",

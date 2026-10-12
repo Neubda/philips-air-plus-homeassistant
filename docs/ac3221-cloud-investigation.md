@@ -126,3 +126,45 @@ python -m unittest discover -s tests -v
 Tests cover nested APK scanning, non-disclosure of credentials in reports,
 empty lists, OTP UID selection, Java-compatible encoding and unexpected-device
 rejection. They do not claim live login, MQTT control or AC3221 verification.
+
+## Static analysis of the supplied Air+ 3.19.0 APK
+
+The supplied APK has SHA-256
+`1c79f75b7562eaa122abfadc44c41cad1462015ca21c3ec4f817e28e9105278c`.
+The supplied device-info screenshot reports **Wi-Fi firmware 86** and
+**device firmware 0.2.3**. It does not establish the model suffix or hardware
+platform. No firmware image was identified in the inspected APK assets.
+
+JADX 1.5.6 produced source for 8,473 classes, with 68 decompilation errors.
+The following findings are tied to readable methods; this is not a claim that
+every app function was reconstructed. Proprietary source and signing values
+are not included in this repository.
+
+| APK class/method | Finding |
+| --- | --- |
+| `com.gaoda.sdk.http.HttpRequestManager.getTokenV2`, inner `a.onSuccess` | First GET `device/serverTime/`; extract `data.timestamp2` (the method parses `data` as JSON text); use it for the previously described two-stage HMAC signature and token POST. The diagnostic now mirrors this instead of assuming the computer clock. |
+| `defpackage.ge`, `HttpRequestManager.getDeviceList`, `deviceDetail` | `enduser/deviceList/` is GET; `enduser/deviceInfo/` is GET with a `device_id` query parameter. |
+| `defpackage.fe` | Authenticated requests use `Authorization: jwt <token>`. |
+| `defpackage.g71`, `com.gaoda.sdk.mqtt.MxMqttClient` | AWS topics include `$aws/things/{device_id}/shadow/get`, `/get/#`, `/update`, `/update/accepted`, `/update/rejected`; additional notices use `Philips/{device_id}/ai-notice`. This independently confirms the reference's shadow transport. |
+| `defpackage.lk1.b`, `tb0.n`, `x40.d`, `w40.m` | Device metadata is requested separately from `https://data.air-matters.com/UQtUO1_3qKZKlh7K` with a JSON `devices` array, `context: app`, `app_type: HomeCare`, and `user_info`. The app adds `x-am-app` and `x-am-authentication` headers. Returned `devices[0]` can include `wifi_firmware` and `device_firmware`. |
+| `defpackage.tn1` | Each firmware record parses `URL`, `title`, `version`, `ota_id`, and `ota_mode`. |
+| `PhilipsDeviceInfoActivity.onClick` | `URL` is attached to the **more information** button and opened as a page; it is not established as a binary download link. |
+| `HttpRequestManager.otaConfirmation`, `defpackage.e01.c3` | POST `enduser/ota/confirmation/` contains `device_id` and `ota_id`; it is called when confirming an update. Do not use this for inspection. |
+| `FirmwareUpdatePullRemote` | Its methods explicitly throw "Not implemented yet". This bundled legacy CDP2 class does not establish a working firmware downloader or the AC3221's platform. |
+
+The metadata request includes model, model range/family, Wi-Fi/device versions,
+platform, and potentially raw device data. The app chooses `mxchip`, `ESP`, or
+`murata` based on the device object class. None is confirmed for this AC3221
+from the screenshot alone. Replaying a guessed platform or fabricating IDs
+would reduce the reliability of the investigation.
+
+**Next step:** run the diagnostic against the user's Air+ account to verify its
+actual device list and connection metadata. After that, capture a read-only
+shadow and determine the real platform/control schema. Firmware retrieval
+remains secondary; no binary URL or firmware image has been obtained. If
+needed, observe the official app's metadata response and OTA delivery path
+without accepting or installing an update.
+
+The earlier APK/device-screen requests above have now been satisfied; the
+outstanding evidence is the account-authorized discovery result. An empty
+result must still be reported as empty rather than treated as support proof.

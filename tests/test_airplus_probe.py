@@ -18,7 +18,7 @@ class ProbeTests(unittest.TestCase):
         secret = "a_" + "c0ffee00" * 4  # Synthetic fixture, never an app credential.
         data = io.BytesIO()
         with zipfile.ZipFile(data, "w") as archive:
-            archive.writestr("classes.dex", f"\0{secret}\0enduser/deviceList/\0enduser/firmware/check/\0https://www.api.air.philips.com/\0".encode())
+            archive.writestr("classes.dex", f"\0{secret}\0enduser/deviceList/\0enduser/firmware/check/\0Lcom/philips/firmware/FirmwarePort;\0https://www.api.air.philips.com/\0".encode())
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "fixture.apkm"
             with zipfile.ZipFile(path, "w") as archive:
@@ -29,16 +29,19 @@ class ProbeTests(unittest.TestCase):
             self.assertEqual(report["signing_value_candidates"], 1)
             self.assertIn("enduser/firmware/check/", report["firmware_path_candidates"])
             self.assertNotIn(secret, json.dumps(report))
+            self.assertFalse(any("Lcom/" in value for value in report["firmware_path_candidates"]))
             self.assertFalse(report["firmware_candidates_are_verified"])
 
     def test_empty_device_list_is_not_guessed(self):
         with patch("tools.airplus_probe.request_json", side_effect=[
+            {"meta": {"code": 0}, "data": {"timestamp2": "1700000000"}},
             {"meta": {"code": 0}, "data": {"token": "private-token"}},
             {"meta": {"code": 0}, "data": []},
         ]) as call:
             report = discover("private-uid", "private-key", mqtt_info=True)
         self.assertEqual(report["device_count"], 0)
-        self.assertEqual(call.call_count, 2)
+        self.assertEqual(call.call_count, 3)
+        self.assertEqual(call.call_args_list[1].kwargs["body"]["timestamp"], "1700000000")
         self.assertFalse(report["ac3221_support_verified"])
 
     def test_metadata_report_omits_account_device_and_connection_credentials(self):
@@ -46,6 +49,7 @@ class ProbeTests(unittest.TestCase):
             "modelid": "AC3221/13", "swversion": "1.0.7", "name": "My bedroom", "mac": "private-mac", "serial": "private-serial",
         }}
         replies = [
+            {"meta": {"code": 0}, "data": {"timestamp2": "1700000000"}},
             {"meta": {"code": 0}, "data": {"token": "private-token"}},
             {"meta": {"code": 0}, "data": [raw_device]},
             {"meta": {"code": 0}, "data": {"mqttinfos": [{"device_id": "private-device", "endpoint": "wss://broker.example/mqtt?X-Amz-Signature=private-signature", "path": "/mqtt?private-path", "client_id": "private-client"}]}},
@@ -61,6 +65,7 @@ class ProbeTests(unittest.TestCase):
 
     def test_unknown_mqtt_device_is_rejected(self):
         replies = [
+            {"meta": {"code": 0}, "data": {"timestamp2": "1700000000"}},
             {"meta": {"code": 0}, "data": {"token": "token"}},
             {"meta": {"code": 0}, "data": [{"device_id": "own", "device_info": {}}]},
             {"meta": {"code": 0}, "data": {"mqttinfos": [{"device_id": "other"}]}},
