@@ -232,3 +232,56 @@ The supplied APK's gaoda HTTP client does not configure certificate pinning
 in `fe.getClient`, but successful interception is not yet verified; other
 network stacks may behave differently. An Android device/emulator or a local
 proxy for the user's official iPhone app is required for this step.
+
+## Official iOS capture and direct cloud-read verification
+
+The user's official iOS capture shows successful (`meta.code: 0`) token,
+device-list and MQTT-info replies. The account's purifier is represented in
+the cloud as **AC3220/10**, type **Unicorn**, firmware **0.2.3**, service region
+**eu-central-1**. This is a cloud-reported model, not proof that the physical
+AC3221 label was wrong. The previous AC3221-only model-prefix assumption is
+insufficient for this account.
+
+Using the user-provided existing app JWT, we independently fetched the own
+account device list and fresh signed MQTT metadata. We then connected over
+TLS/WSS to AWS IoT and received an accepted `$aws/things/{device_id}/shadow/get`
+response containing `state.reported`. No state-changing commands, desired
+updates, filter resets, firmware checks or firmware installation were issued.
+Direct connection initially failed on DNS in the execution environment;
+using its HTTP network proxy with remote DNS resolved the transport issue.
+
+Observed reported-state keys include `D03102`, `D0310C`, `D0310D`, `D03221`,
+`D03120`, `D05207`, `D0520D`, `D05408`, `D0540E`, `WifiVersion`, and diagnostic
+fields. The desired state was empty. No raw shadow, account IDs, MAC addresses,
+serials, signing values, JWTs or signed broker paths are published here.
+
+APK `ia` routes type `Unicorn` to `h11`; `h11` maps modes through `D0310C`
+(0 auto, 17 sleep-related mode, 18 turbo, with additional device-specific modes)
+and filters through `D0520D` / `D0540E`. Base `c01` reads/writes power with
+`D03102` (1 on, 0 off). In particular, the old speculative AC3221 YAML mapping
+of `power: D0310D` must not be transplanted into the new cloud client.
+Controls have **not** been exercised against this purifier.
+
+The captured iOS signature does not match either the readable SDK default or
+the decoded Android production configuration with the reconstructed Android
+algorithm. This is a verified mismatch, not proof of its cause. iOS key or
+algorithm differences and runtime configuration remain unresolved.
+
+`tools/airplus_shadow_probe.py` is a temporary diagnostic for an existing
+own-account JWT, entered with a hidden prompt and kept only in memory. It
+obtains fresh MQTT credentials, subscribes to get accepted/rejected, and
+publishes an empty get request. Optional HTTP proxy support uses `HTTPS_PROXY`
+and PySocks; direct access requires only paho-mqtt. Reports omit identifiers
+and string values except numeric sensor strings from D03/D05 registers.
+
+```sh
+python -m pip install paho-mqtt
+python tools/airplus_shadow_probe.py
+```
+
+**Verified:** alternate backend discovery, fresh MQTT metadata, and actual
+purifier cloud state reading. **Unresolved:** autonomous token creation/renewal,
+observed control semantics, reconnect behavior, and firmware-image retrieval.
+An app-token-only integration would stop when that token expires and is not
+the desired durable solution. Do not merge this investigation as a working
+HA integration or claim automatic reconnection until those steps are tested.
