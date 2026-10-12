@@ -311,3 +311,64 @@ actual signing path. If a newer APK is not available from an existing Android
 device, a Windows Android emulator can obtain the official app; an iOS binary
 may be App Store encrypted and cannot simply substitute for an Android APK.
 The current cloud-reading proof remains valid and independent of this gap.
+
+## Signing breakthrough and transport interference
+
+GitHub code search identified an independent runtime capture in
+[kwesolowski/node-red-contrib-philips-airplus](https://github.com/kwesolowski/node-red-contrib-philips-airplus/blob/acbffa3683e728512dde7da824184586d3f4f9f9/docs/api-reverse-engineered.md).
+The documented runtime signing value reproduces the user's successful iOS
+3.20.0 Signature **exactly** with the Android two-stage HMAC algorithm. The
+value is not published in this repository. It does not have the previously
+assumed hex-only suffix; the scanner's hex-only pattern was not a valid
+constraint on actual production signing values.
+
+A decisive transport canary sent only harmless placeholder headers and a
+nonpersonal JSON body to httpbin. The custom diagnostic header, User-Agent,
+Authorization placeholder and JSON body were preserved, but **Signature was
+replaced**; the received request additionally contained `Signature-Input` and
+`Signature-Agent`. Direct origin DNS is unavailable in this execution
+context. Thus this environment's network proxy interferes with the header
+name used by Air+. The cloud API rejection here cannot establish that an
+otherwise verified app signature is wrong. This changes the interpretation
+of the earlier repeated Invalid Signature results.
+
+Additional checks:
+
+- The APK's legacy `enduser/getToken/` route returned HTTP 404.
+- Replaying the old captured token request returned code 10001 here; its
+  elapsed timestamp and the same Signature interference prevent drawing an
+  origin-level replay/expiry conclusion.
+- Calling v2 with the existing own-account JWT but without an app Signature
+  returned Invalid Signature here. This does not demonstrate a usable
+  bearer-only renewal mechanism.
+- Decompiling the HMAC helper with constant replacement disabled confirms
+  the actual byte mask is **255**, despite misleading symbolic substitution
+  in the first JADX output. The normal lowercase SHA-256 hex algorithm is
+  correct.
+- The APK routes Unicorn through `h11 -> d11 -> c01 -> e01`, its MxChip
+  appliance implementation. This identifies the **app's protocol branch**,
+  not a physically inspected Wi-Fi chip model.
+
+`tools/airplus_windows_probe.ps1` runs with built-in Windows PowerShell 5.1
+or PowerShell 7 and bypasses the execution environment's interfering proxy
+by running on the user's own PC. It downloads the pinned runtime reference,
+checks its full SHA-256, reads its signing value in memory, performs the
+user's email OTP login, creates a fresh cloud token, lists own devices and
+fetches MQTT connection metadata. It never prints credentials, writes token
+files, connects to MQTT, or changes device state. The report is sanitized.
+This pinned third-party reference is an explicit dependency; a missing or
+modified document stops the diagnostic rather than silently changing keys.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\airplus_windows_probe.ps1
+```
+
+`-ExecutionPolicy Bypass` applies to that process; it does not change the
+machine's saved execution policy. Offline signature/encoding/redaction
+self-checks can be run with `-OfflineSelfTest`. CI checks that mode without
+an account, downloaded reference, or network. The live fresh-token result
+on Windows is still required before claiming end-to-end autonomous login.
+
+Android installation is **not required** for this next test. A confirmed
+local result will support implementing the durable OTP/UID/token and MQTT
+reconnect path in HA; the earlier app-token-only cloud read remains verified.
