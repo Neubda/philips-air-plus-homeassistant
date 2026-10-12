@@ -1,4 +1,12 @@
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+.pytest_cache/
+.venv/
+*.apk
+*.apkm
+*.xapk
+*.har
+captures/
+probe-report*.json
+apk-report*.json
 .DS_Store

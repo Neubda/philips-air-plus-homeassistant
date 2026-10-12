@@ -1,10 +1,17 @@
 # Philips Air+ Home Assistant Integration
 
-Custom integration for Philips Air+ air purifiers. It communicates with the Philips/Versuni **cloud** service using the same MQTT protocol as the official mobile app and Google Home — no local CoAP connection, so no CoAP-style dropouts.
+Custom integration for the Philips/Versuni **DaConnect cloud/MQTT** backend.
+
+> **AC3221 status: cloud support is not verified.** This account's purifier is
+> not returned by the existing device-list endpoint. A model mapping does not
+> establish cloud compatibility, and a manual UUID does not solve a different
+> backend. An alternate Air+ cloud route is under investigation; see
+> [AC3221 investigation and read-only diagnostic](docs/ac3221-cloud-investigation.md).
+> The exact interface used by Google Home has not been established.
 
 This is a fork of [ShorMeneses/philips-airplus-homeassistant](https://github.com/ShorMeneses/philips-airplus-homeassistant) with two changes:
 
-- **PureProtect 3200i (AC3221) support** added to `models.yaml`. The CoAP-based [ruaan-deysel/ha-philips-airpurifier](https://github.com/ruaan-deysel/ha-philips-airpurifier) already supports this device, but it talks to it locally via CoAP, which on some networks causes frequent connection drops. This fork keeps the original's cloud/MQTT transport (the same backend Google Home uses) and adds the model mapping so the 3200i works through it too. The property keys were mapped from the confirmed CoAP addressing scheme for the AC32xx family (see [Architecture](#architecture)) rather than from a captured cloud payload — please open an issue with debug logs if any entity reports an incorrect value.
+- **PureProtect 3200i (AC3221) support** added to `models.yaml`. The CoAP-based [ruaan-deysel/ha-philips-airpurifier](https://github.com/ruaan-deysel/ha-philips-airpurifier) already supports this device, but it talks to it locally via CoAP, which on some networks causes frequent connection drops. This fork keeps the original's DaConnect cloud/MQTT transport and adds an experimental model mapping; an AC3221 cloud connection has not yet been verified. The property keys were mapped from the confirmed CoAP addressing scheme for the AC32xx family (see [Architecture](#architecture)) rather than from a captured cloud payload — please open an issue with debug logs if any entity reports an incorrect value.
 - **Smoother onboarding.** Email + verification code is now the default, recommended setup path — no browser DevTools needed. The original OAuth PKCE flow (which required pulling a redirect URL out of the browser Network tab) is kept only as an advanced fallback for accounts where the email flow doesn't apply.
 
 ## Features
@@ -54,7 +61,7 @@ A Philips account (Philips Air+ or Philips HomeID) with your device already set 
 
 ### Authentication: Email + Verification Code (Recommended, default)
 
-This is the cloud account flow — the same one used by Google Home — and needs no browser or DevTools.
+This is the current DaConnect client's cloud login flow and needs no browser or DevTools. A successful login does not establish that this device backend lists your purifier; see the AC3221 investigation above.
 
 1. Add the integration in Home Assistant. **Email + verification code** is preselected.
 2. Enter the email address associated with your Philips account.
