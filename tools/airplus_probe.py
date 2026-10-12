@@ -138,7 +138,7 @@ def request_json(url: str, *, body=None, form=False, headers=None) -> dict:
             request_headers["Content-Type"] = "application/x-www-form-urlencoded"
         else:
             encoded = json.dumps(body, separators=(",", ":")).encode()
-            request_headers["Content-Type"] = "application/json;charset:utf-8"
+            request_headers["Content-Type"] = "application/json; charset=utf-8"
     request = urllib.request.Request(url, data=encoded, headers=request_headers)
     try:
         with urllib.request.build_opener(NoRedirect()).open(request, timeout=30) as response:

@@ -200,3 +200,35 @@ python tools/airplus_probe.py probe --apk /path/to/AirPlus.apk --decompiled-dir 
 
 The corrected production configuration still requires a fresh live account
 test; successful device discovery must not be claimed from static decoding.
+
+## Second live attempt: production configuration still rejected
+
+The second user-authorized OTP login succeeded, but the production-configured
+Air+ token exchange again returned **10001**. No account device list, MQTT
+connection, purifier control, or firmware download was reached.
+
+A subsequent token-request diagnostic with an intentionally invalid synthetic
+username established the server's error label **Invalid Signature**. It did
+not query device lists for synthetic or third-party accounts. Both the SDK
+default and decoded production configuration produced this signature error.
+The public server clock matched local epoch seconds. Matching the app's
+`MxChip&Fog&Hyj#com.philips.ph.homecare#_v3.19.0` User-Agent did not clear the
+error. The diagnostic's JSON content type was corrected from the reference's
+malformed charset separator to `application/json; charset=utf-8`; this also
+did not clear the error.
+
+Therefore the production-key override finding is valid as static evidence,
+but the earlier assertion that this alone solved live authentication was too
+strong. The wire-level reproduction is **not verified**, and no empty list
+or AC3221 compatibility conclusion can be drawn from these attempts.
+
+Do not request repeated account OTPs until a successful official-app token
+request can be compared. The next evidence should be a local capture of the
+user's own official Air+ app, checking effective host/app identifier,
+canonical signing inputs and runtime configuration. Raw captures may contain
+account tokens, signatures, MAC addresses, and signed MQTT URLs; keep them
+local and do not attach them to the public PR. Report only sanitized differences.
+The supplied APK's gaoda HTTP client does not configure certificate pinning
+in `fe.getClient`, but successful interception is not yet verified; other
+network stacks may behave differently. An Android device/emulator or a local
+proxy for the user's official iPhone app is required for this step.
