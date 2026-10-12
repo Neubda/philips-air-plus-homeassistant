@@ -2,6 +2,15 @@
 
 Custom integration for the Philips/Versuni **DaConnect cloud/MQTT** backend.
 
+> ## ⚠️ Vibe-coded project: use at your own risk
+>
+> This fork was built largely with AI assistance ("vibe coding"). Most of the
+> changes were generated and iterated with an AI model and have **not** been
+> reviewed line by line or tested broadly on real hardware. The AC3221 mapping in
+> particular is derived from the CoAP scheme, not from a real cloud capture.
+> Expect rough edges, back up your Home Assistant config before installing, and
+> please open an issue with debug logs if something misbehaves.
+
 > **AC3221 status: cloud support is not verified.** This account's purifier is
 > not returned by the existing device-list endpoint. A model mapping does not
 > establish cloud compatibility, and a manual UUID does not solve a different
@@ -30,6 +39,7 @@ This is a fork of [ShorMeneses/philips-airplus-homeassistant](https://github.com
 |-------|-------|-----------|-------------------|-------------|-----------------|
 | AC0650/10 | Auto, Sleep, Turbo | Yes | Yes | PM2.5 | No |
 | AC0651/10 | Auto, Medium, Sleep, Turbo | Yes | Yes | PM2.5, Allergen Index | Yes |
+| AC1715/10 | Auto, Medium, Sleep, Fast, Turbo | Yes | Yes | PM2.5, Allergen Index | No |
 | AC1715/11 | Auto, Medium, Sleep, Fast, Turbo | Yes | Yes | PM2.5, Allergen Index | No |
 | AC1715/70 | Auto, Medium, Sleep, Fast, Turbo | Yes | Yes | PM2.5 | No |
 | AC3221 (PureProtect 3200i) | Auto, Speed1-5, Sleep, Medium, Turbo | Yes | Yes | PM2.5, Allergen Index | No (unverified, see note above) |
@@ -113,6 +123,7 @@ Thanks to:
 - @markusstephany
 - @renaudallard — the email OTP authentication flow is adapted from the [Philips HomeID integration](https://github.com/renaudallard/homeassistant_philips_homeid)
 - @rgpublic — AC1715/11 model configuration
+- @vraptunovich — AC1715/10 model configuration
 
 ## License
 
