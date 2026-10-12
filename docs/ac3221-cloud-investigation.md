@@ -285,3 +285,29 @@ observed control semantics, reconnect behavior, and firmware-image retrieval.
 An app-token-only integration would stop when that token expires and is not
 the desired durable solution. Do not merge this investigation as a working
 HA integration or claim automatic reconnection until those steps are tested.
+
+## Version context supplied after the capture
+
+The user confirmed **iOS Air+ 3.20.0** for the successful capture (HTTP
+User-Agent build 16363). Our statically inspected Android binary is 3.19.0.
+The official App Store version history lists iOS 3.20.0 with generic bug-fix
+notes, not an authentication/signing change:
+https://apps.apple.com/us/app/philips-air/id1487415423
+The official Google Play listing reports an August 28, 2026 update but does
+not expose an unambiguous version number in the retrieved page:
+https://play.google.com/store/apps/details?id=com.philips.ph.homecare
+
+Additional offline comparisons of known Android configuration keys across
+canonical field ordering, raw/encoded usernames, and single/two-stage HMAC
+representations did not match the iOS capture. These comparisons do not prove
+which platform/version/runtime difference is responsible. The upstream
+reference remains at the previously examined commit; no newer signing fix was
+identified there.
+
+Do not infer that the Android and iOS version numbers or signing credentials
+are interchangeable. The next useful binary is the currently distributed
+Android app from the official Play store, followed by verification of its
+actual signing path. If a newer APK is not available from an existing Android
+device, a Windows Android emulator can obtain the official app; an iOS binary
+may be App Store encrypted and cannot simply substitute for an Android APK.
+The current cloud-reading proof remains valid and independent of this gap.
