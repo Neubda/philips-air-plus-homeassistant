@@ -35,7 +35,8 @@ assuming every earlier architecture note is correct.
 
 ## Concrete read-only diagnostic
 
-`tools/airplus_probe.py` uses only Python's standard library. It does not import
+Offline inspection in `tools/airplus_probe.py` uses only Python's standard library.
+Live probing additionally requires `cryptography` and local JADX sources. It does not import
 Home Assistant and does not replace the installed integration.
 
 ### 1. Inspect the app, offline
@@ -57,7 +58,7 @@ not included in the report; only the number of candidates is shown.
 ### 2. Check the alternate cloud device list
 
 ```sh
-python tools/airplus_probe.py probe --apk /path/to/AirPlus.apk --output probe-report.json
+python tools/airplus_probe.py probe --apk /path/to/AirPlus.apk --decompiled-dir /path/to/jadx/sources --output probe-report.json
 ```
 
 The tool asks for the account email and a fresh emailed confirmation code. It
@@ -70,7 +71,7 @@ There is no OIDC exchange or HomeID device-list fallback in this route.
 ### 3. Check MQTT metadata, without connecting
 
 ```sh
-python tools/airplus_probe.py probe --apk /path/to/AirPlus.apk --mqtt-info --output probe-report.json
+python tools/airplus_probe.py probe --apk /path/to/AirPlus.apk --decompiled-dir /path/to/jadx/sources --mqtt-info --output probe-report.json
 ```
 
 This additional step only requests connection metadata for devices returned
@@ -168,3 +169,34 @@ without accepting or installing an update.
 The earlier APK/device-screen requests above have now been satisfied; the
 outstanding evidence is the account-authorized discovery result. An empty
 result must still be reported as empty rather than treated as support proof.
+
+
+## Live authentication finding and correction
+
+The user-authorized email OTP login succeeded. The subsequent Air+ token
+exchange returned backend code **10001**, so no device list or MQTT metadata
+was retrieved. This is not an empty-device-list result.
+
+Tracing `ab1`'s constructor established that `HttpRequestManager.setSecret`
+overrides the SDK's readable default with `mk1.w`'s production configuration.
+That configuration is encrypted/obfuscated through `tj0.e`. Local decoding
+confirmed the same production host and public app identifier, but a **different
+signing secret**. Selecting the sole readable `a_...` candidate was incorrect.
+
+`tools/airplus_apk_config.py` now reconstructs the non-China production branch
+from the user's locally decompiled Air+ 3.19.0 sources. It embeds no app keys,
+and the live probe fails closed unless this configuration is supplied and the
+host/app identifier match. This reader is version-specific, not a general
+extractor for future APKs. The default-configuration fingerprint is not proof
+of a production signing key.
+
+Preparation for this version:
+
+```sh
+python -m pip install cryptography
+jadx --no-res -d /path/to/jadx /path/to/AirPlus.apk
+python tools/airplus_probe.py probe --apk /path/to/AirPlus.apk --decompiled-dir /path/to/jadx/sources --mqtt-info --output probe-report.json
+```
+
+The corrected production configuration still requires a fresh live account
+test; successful device discovery must not be claimed from static decoding.

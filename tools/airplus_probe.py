@@ -259,6 +259,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("inspect", "probe"))
     parser.add_argument("--apk", type=Path, required=True, help="Your Philips Air+ APK/APKM/XAPK")
+    parser.add_argument("--decompiled-dir", type=Path, help="JADX sources directory for Air+ 3.19.0 production configuration")
     parser.add_argument("--mqtt-info", action="store_true", help="Also fetch metadata; does not connect or control")
     parser.add_argument("--output", type=Path, help="Write a sanitized JSON report")
     args = parser.parse_args()
@@ -266,14 +267,20 @@ def main() -> int:
         if args.mode == "inspect":
             report = inspect_apk(args.apk)
         else:
-            _, secrets = apk_strings(args.apk)
-            if len(secrets) != 1:
-                raise ProbeError("Exactly one signing value is required in this APK")
+            if args.decompiled_dir is None:
+                raise ProbeError("Live probing requires --decompiled-dir: the plain APK signing candidate is an overridden SDK default")
+            try:
+                from airplus_apk_config import production_config
+                config = production_config(args.decompiled_dir)
+            except Exception:
+                raise ProbeError("Cannot read production configuration; check JADX sources and install cryptography") from None
+            if config["host"] != AIR_HOST or config["app_id"] != APP_ID:
+                raise ProbeError("Unsupported production host or app identifier")
             email = input("Philips account email: ").strip()
             if "@" not in email:
                 raise ProbeError("Invalid email address")
             uid = login(email)
-            report = discover(uid, secrets.pop(), mqtt_info=args.mqtt_info)
+            report = discover(uid, config["secret"], mqtt_info=args.mqtt_info)
         text = json.dumps(report, indent=2, ensure_ascii=False)
         if args.output:
             args.output.write_text(text + "\n")
